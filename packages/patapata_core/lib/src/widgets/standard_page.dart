@@ -765,6 +765,10 @@ abstract class StandardPageWithResult<T extends Object?, E extends Object?>
   Navigator? get childNavigator => _navigator;
 
   void _onPageDataChanged() {
+    if (!mounted) {
+      return;
+    }
+
     if (!_ready) {
       _doPageDataChangedOnReady = true;
 
@@ -1249,6 +1253,15 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
   }
 
   void _updatePageFactories(List<StandardPageWithResultFactory> pageFactories) {
+    if (pageFactories.whereType<SplashPageFactory>().isEmpty) {
+      pageFactories.insert(
+        0,
+        SplashPageFactory(
+          create: (_) => _DummySplashPage(),
+        ),
+      );
+    }
+
     // Remove the deleted page from the _factoryTypeMap Map variable during hot reloading
     _factoryTypeMap.clear();
     _standardPagesMap.clear();
@@ -1291,30 +1304,22 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
     }
 
     if (_pageInstances.isEmpty) {
-      StandardPageWithResultFactory<StandardPageWithResult<Object?, Object?>,
-          Object?, Object?> tStandardPage;
-      if (pageFactories.first.parentPageType == null) {
-        tStandardPage = pageFactories.first;
-      } else {
-        // If the first page of pageFactories has a parentType set, the parent page will be added first.
-        var tResult = pageFactories.where((element) =>
-            element.pageType == pageFactories.first.parentPageType);
-        tStandardPage = tResult.first;
-      }
+      final StandardPageWithResultFactory<
+              StandardPageWithResult<Object?, Object?>, Object?, Object?>
+          tSplashPage = pageFactories.whereType<SplashPageFactory>().first;
 
-      final tPageData = tStandardPage.pageDataWhenNull?.call();
+      final tPageData = tSplashPage.pageDataWhenNull?.call();
 
       final tPage = _initializePage(
-        tStandardPage,
-        tStandardPage.getPageKey(tPageData),
+        tSplashPage,
+        tSplashPage.getPageKey(tPageData),
         tPageData,
       );
 
-      _pageInstanceToTypeMap[tPage] = pageFactories.first.pageType;
+      _pageInstanceToTypeMap[tPage] = tSplashPage.pageType;
       _pageInstanceToRouteData[tPage] =
-          StandardRouteData(factory: pageFactories.first, pageData: null);
-      _pageInstanceCompleterMap[tPage] =
-          pageFactories.first._createResultCompleter();
+          StandardRouteData(factory: tSplashPage, pageData: tPageData);
+      _pageInstanceCompleterMap[tPage] = tSplashPage._createResultCompleter();
       _pageInstances.add(tPage);
     }
   }
@@ -1568,13 +1573,29 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
       }
     }
 
-    final tInitialRouteData =
-        _initialRouteData ?? _getStandardRouteDataForPath(Uri(path: ''));
+    final StandardRouteData tInitialRouteData;
+    if (_initialRouteData!.factory == null) {
+      if (kIsWeb) {
+        throw WebPageNotFound();
+      }
+
+      final tFactory = _factoryTypeMap.entries
+          .firstWhereOrNull((e) =>
+              e.value.group == StandardPageWithResultFactory.defaultGroup)
+          ?.value;
+
+      assert(tFactory != null, 'No initial page found');
+
+      tInitialRouteData = StandardRouteData(
+        factory: tFactory,
+        pageData: tFactory?.pageDataWhenNull?.call(),
+      );
+    } else {
+      tInitialRouteData = _initialRouteData!;
+    }
     _initialRouteData = null;
 
-    assert(tInitialRouteData != null);
-
-    routeWithConfiguration(tInitialRouteData!);
+    routeWithConfiguration(tInitialRouteData);
   }
 
   StandardRouteData? _initialRouteData;
@@ -1583,6 +1604,10 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
   Future<void> setNewRoutePath(StandardRouteData configuration) {
     if (!_initialRouteProcessed) {
       _initialRouteData = configuration;
+
+      if (!_startupSequenceProcessed) {
+        processInitialRoute();
+      }
 
       return SynchronousFuture(null);
     }
@@ -1940,5 +1965,22 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
     }
 
     return tFactory;
+  }
+}
+
+class WebPageNotFound extends PatapataCoreException {
+  WebPageNotFound() : super(code: PatapataCoreExceptionCode.PPE601);
+
+  @override
+  Level? get logLevel => Level.INFO;
+
+  @override
+  Level? get userLogLevel => Level.SHOUT;
+}
+
+class _DummySplashPage extends StandardPage<void> {
+  @override
+  Widget buildPage(BuildContext context) {
+    return const SizedBox.shrink();
   }
 }

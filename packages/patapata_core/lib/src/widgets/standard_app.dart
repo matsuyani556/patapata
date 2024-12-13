@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:patapata_core/patapata_core.dart';
 import 'package:patapata_core/patapata_core_libs.dart';
+import 'package:patapata_core/src/exception.dart';
 import 'package:provider/provider.dart';
 
 part 'standard_page.dart';

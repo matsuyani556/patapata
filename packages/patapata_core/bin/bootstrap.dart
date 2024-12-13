@@ -333,9 +333,10 @@ void main() {
       pages: [
         // Splash screen page.
         // This uses a special factory that has good defaults for splash screens.
-        SplashPageFactory<SplashPage>(
-          create: (_) => SplashPage(),
-        ),
+        if (!kIsWeb)
+          SplashPageFactory<SplashPage>(
+            create: (_) => SplashPage(),
+          ),
         // Agreement page.
         // This uses a special factory that all [StartupSequence] pages should use.
         StartupPageFactory<AgreementPage>(
@@ -344,7 +345,11 @@ void main() {
         // Error page.
         // This uses a special factory that all full screen error pages should use.
         StandardErrorPageFactory(
-          create: (_) => ErrorPage(),
+          create: (exception) => switch (exception.error) {
+            AppException _ => AppExceptionPage(),
+            WebPageNotFound _ => WebPageNotFoundPage(),
+            _ => UnknownExceptionPage(),
+          },
         ),
         StandardPageFactory<HomePage, void>(
           create: (_) => HomePage(),
@@ -704,17 +709,9 @@ import 'package:patapata_core/patapata_widgets.dart';
 
 import '../errors.dart';
 
-class ErrorPage extends StandardPage<ReportRecord> {
+class AppExceptionPage extends StandardPage<ReportRecord> {
   @override
   Widget buildPage(BuildContext context) {
-    if (pageData.error is AppException) {
-      return _buildAppExceptionPage(context);
-    } else {
-      return _buildUnknownExceptionPage(context);
-    }
-  }
-
-  Widget _buildAppExceptionPage(BuildContext context) {
     final tAppException = pageData.error as AppException;
 
     return Scaffold(
@@ -737,8 +734,31 @@ class ErrorPage extends StandardPage<ReportRecord> {
       ),
     );
   }
+}
 
-  Widget _buildUnknownExceptionPage(BuildContext context) {
+class WebPageNotFoundPage extends StandardPage<ReportRecord> {
+  @override
+  Widget buildPage(BuildContext context) {
+    final tException = pageData.error as WebPageNotFound;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(tException.localizedTitle),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Text(tException.localizedMessage),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class UnknownExceptionPage extends StandardPage<ReportRecord> {
+  @override
+  Widget buildPage(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(l(context, 'errors.app.000.title')),
@@ -955,6 +975,10 @@ pages:
     title: Home
     body: This is the home page.
 errors:
+  patapata:
+    '601':
+      title: Page not found
+      message: Page not found.
   app:
     '000':
       title: Unknown Error
