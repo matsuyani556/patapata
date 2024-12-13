@@ -1253,9 +1253,9 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
   }
 
   void _updatePageFactories(List<StandardPageWithResultFactory> pageFactories) {
-    if (pageFactories.whereType<SplashPageFactory>().isEmpty) {
-      pageFactories.insert(
-        0,
+    if (!_initialRouteProcessed &&
+        pageFactories.whereType<SplashPageFactory>().isEmpty) {
+      pageFactories.add(
         SplashPageFactory(
           create: (_) => _DummySplashPage(),
         ),
@@ -1305,21 +1305,60 @@ class StandardRouterDelegate extends RouterDelegate<StandardRouteData>
 
     if (_pageInstances.isEmpty) {
       final StandardPageWithResultFactory<
-              StandardPageWithResult<Object?, Object?>, Object?, Object?>
-          tSplashPage = pageFactories.whereType<SplashPageFactory>().first;
+          StandardPageWithResult<Object?, Object?>,
+          Object?,
+          Object?> tStandardPage;
+      if (!_initialRouteProcessed) {
+        tStandardPage = pageFactories.whereType<SplashPageFactory>().first;
+      } else if (pageFactories.first.parentPageType == null) {
+        tStandardPage = pageFactories.first;
+      } else {
+        // If the first page of pageFactories has a parentType set, the parent page will be added first.
+        var tResult = pageFactories.where((element) =>
+            element.pageType == pageFactories.first.parentPageType);
+        tStandardPage = tResult.first;
+      }
 
-      final tPageData = tSplashPage.pageDataWhenNull?.call();
+      final tPageData = tStandardPage.pageDataWhenNull?.call();
 
       final tPage = _initializePage(
-        tSplashPage,
-        tSplashPage.getPageKey(tPageData),
+        tStandardPage,
+        tStandardPage.getPageKey(tPageData),
         tPageData,
       );
 
-      _pageInstanceToTypeMap[tPage] = tSplashPage.pageType;
+      _pageInstanceToTypeMap[tPage] = tStandardPage.pageType;
       _pageInstanceToRouteData[tPage] =
-          StandardRouteData(factory: tSplashPage, pageData: tPageData);
-      _pageInstanceCompleterMap[tPage] = tSplashPage._createResultCompleter();
+          StandardRouteData(factory: tStandardPage, pageData: tPageData);
+      _pageInstanceCompleterMap[tPage] = tStandardPage._createResultCompleter();
+      _pageInstances.add(tPage);
+    }
+
+    if (_pageInstances.isEmpty) {
+      StandardPageWithResultFactory<StandardPageWithResult<Object?, Object?>,
+          Object?, Object?> tStandardPage;
+      if (pageFactories.first.parentPageType == null) {
+        tStandardPage = pageFactories.first;
+      } else {
+        // If the first page of pageFactories has a parentType set, the parent page will be added first.
+        var tResult = pageFactories.where((element) =>
+            element.pageType == pageFactories.first.parentPageType);
+        tStandardPage = tResult.first;
+      }
+
+      final tPageData = tStandardPage.pageDataWhenNull?.call();
+
+      final tPage = _initializePage(
+        tStandardPage,
+        tStandardPage.getPageKey(tPageData),
+        tPageData,
+      );
+
+      _pageInstanceToTypeMap[tPage] = pageFactories.first.pageType;
+      _pageInstanceToRouteData[tPage] =
+          StandardRouteData(factory: pageFactories.first, pageData: null);
+      _pageInstanceCompleterMap[tPage] =
+          pageFactories.first._createResultCompleter();
       _pageInstances.add(tPage);
     }
   }
