@@ -1,0 +1,37 @@
+[build.environment]
+  FLUTTER_VERSION = "3.35.5"
+
+[build]
+  command = '''
+  echo "Netlify context: $CONTEXT"
+
+  curl -o flutter.tar.xz "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+  tar -xf flutter.tar.xz
+  export PATH="$PWD/flutter/bin:$PATH"
+
+  flutter --version
+
+  flutter pub get
+
+  dart pub global activate melos
+  melos --version
+  melos bootstrap
+
+  cd packages/patapata_example_app
+
+  flutter build web --release
+
+  if [ "$CONTEXT" = "production" ]; then
+    echo "Production deploy: removing _headers"
+    rm -f build/web/_headers || true
+  else
+    sed -i "s|@{BASIC_AUTH}|$BASIC_AUTH|g" build/web/_headers
+  fi
+  '''
+
+  publish = "packages/patapata_example_app/build/web"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

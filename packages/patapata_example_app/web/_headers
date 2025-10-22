@@ -1,0 +1,13 @@
+/*
+  Basic-Auth: @{BASIC_AUTH}
+
+/manifest.json
+  Access-Control-Allow-Origin: *
+/icons/Icon-192.png
+  Access-Control-Allow-Origin: *
+/icons/Icon-512.png
+  Access-Control-Allow-Origin: *
+/favicon.png
+  Access-Control-Allow-Origin: *
+/apple-touch-icon.png
+  Access-Control-Allow-Origin: *
